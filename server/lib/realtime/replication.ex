@@ -82,9 +82,16 @@ defmodule Realtime.Replication do
     # Feel free to delete after testing
     Logger.debug("Final Update of Columns " <> inspect(relations, limit: :infinity))
 
-    :ok = %{txn | changes: Enum.reverse(changes)} |> SubscribersNotification.notify()
+    case Realtime.Replication.Replicator.replicate(changes) do
+      :ok ->
+        :ok = %{txn | changes: Enum.reverse(changes)} |> SubscribersNotification.notify()
+        :ok = EpgsqlServer.acknowledge_lsn(end_lsn)
 
-    :ok = EpgsqlServer.acknowledge_lsn(end_lsn)
+        Logger.info("replication successfuly")
+
+      _error ->
+        Logger.info("replication failed")
+    end
 
     %{state | transaction: nil}
   end

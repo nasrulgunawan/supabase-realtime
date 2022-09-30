@@ -1,6 +1,6 @@
 import Config
 
-alias Realtime.{PubSub, RLS}
+alias Realtime.{PubSub, RLS, Replication}
 alias RealtimeWeb.Endpoint
 
 # These defaults mirror the ones in config.exs, remember not to change one
@@ -19,6 +19,14 @@ db_user = System.get_env("DB_USER", "postgres")
 db_password = System.get_env("DB_PASSWORD", "postgres")
 # HACK: There's probably a better way to set boolean from env
 db_ssl = System.get_env("DB_SSL", "true") != "false"
+# replication db config
+db_replication_host = System.get_env("DB_REPLICATION_HOST", "localhost")
+db_replication_port = System.get_env("DB_REPLICATION_PORT", "5432") |> String.to_integer()
+db_replication_name = System.get_env("DB_REPLICATION_NAME", "postgres")
+db_replication_user = System.get_env("DB_REPLICATION_USER", "postgres")
+db_replication_password = System.get_env("DB_REPLICATION_PASSWORD", "postgres")
+# HACK: There's probably a better way to set boolean from env
+db_replication_ssl = System.get_env("DB_REPLICATION_SSL", "true") != "false"
 publications = System.get_env("PUBLICATIONS", "[\"supabase_realtime\"]")
 slot_name = System.get_env("SLOT_NAME") || :temporary
 temporary_slot = is_atom(slot_name) || System.get_env("TEMPORARY_SLOT", "false") == "true"
@@ -96,6 +104,12 @@ config :realtime,
   db_password: db_password,
   db_ssl: db_ssl,
   db_ip_version: db_ip_version,
+  db_replication_host: db_replication_host,
+  db_replication_port: db_replication_port,
+  db_replication_name: db_replication_name,
+  db_replication_user: db_replication_user,
+  db_replication_password: db_replication_password,
+  db_replication_ssl: db_replication_ssl,
   publications: publications,
   replication_mode: replication_mode,
   slot_name: slot_name,
@@ -114,7 +128,7 @@ config :realtime,
   max_record_bytes: max_record_bytes
 
 config :realtime,
-  ecto_repos: [RLS.Repo]
+  ecto_repos: [RLS.Repo, Replication.Repo]
 
 config :realtime, RLS.Repo,
   database: db_name,
@@ -134,6 +148,13 @@ config :realtime, RLS.Repo,
   backoff_min: db_reconnect_backoff_min,
   backoff_max: db_reconnect_backoff_max,
   log: false
+
+config :realtime, Replication.Repo,
+  database: db_replication_name,
+  username: db_replication_user,
+  password: db_replication_password,
+  hostname: db_replication_host,
+  port: db_replication_port
 
 config :realtime, Endpoint,
   http: [:inet6, port: app_port],

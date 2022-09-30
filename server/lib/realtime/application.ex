@@ -150,7 +150,7 @@ defmodule Realtime.Application do
       }
     ]
 
-    children = essential_children ++ replication_children
+    children = essential_children ++ replication_children ++ [Realtime.Replication.Repo]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
