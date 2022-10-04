@@ -265,7 +265,12 @@ defmodule Realtime.Replication do
           end
           |> case do
             {:ok, record} ->
-              {:cont, Map.put(acc, column_name, convert_column_record(record, column_type))}
+              {:cont,
+               Map.put(
+                 acc,
+                 String.to_existing_atom(column_name),
+                 convert_column_record(record, column_type)
+               )}
 
             :error ->
               {:halt, acc}
@@ -293,6 +298,11 @@ defmodule Realtime.Replication do
       {:ok, %DateTime{} = date_time} -> DateTime.to_iso8601(date_time)
       _ -> record
     end
+  end
+
+  @integer_types ~w[int4 int8]
+  defp convert_column_record(record, type) when type in @integer_types do
+    String.to_integer(record)
   end
 
   defp convert_column_record(record, _column_type) do

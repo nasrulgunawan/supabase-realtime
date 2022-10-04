@@ -3,46 +3,55 @@ defmodule Realtime.Replication.Replicator do
 
   require Logger
 
+  import Ecto.Query
+
   alias Realtime.Adapters.Changes.{
     NewRecord,
     UpdatedRecord,
     DeletedRecord
   }
 
-  alias Realtime.{Replication.Repo, Todo}
+  # TODO: need to handle deleted data?
 
-  def replicate(changes) when is_list(changes) do
-    Enum.each(changes, fn change ->
-      {:ok, _record} = replicate(change)
-    end)
+  alias Realtime.Replication.{MainOrder, Repo, Trade}
+
+  def replicate([change] = changes) when is_list(changes) do
+    :ok = replicate(change)
   end
 
-  def replicate(%NewRecord{record: record}) do
-    Logger.info("# NEW RECORD #")
-    Repo.insert(Todo.changeset(%Todo{}, record))
+  def replicate(%NewRecord{table: table, record: record}) do
+    insert_data(table, record)
+    Logger.info("Data #{table} inserted")
+
+    :ok
   end
 
-  def replicate(%UpdatedRecord{record: %{"id" => id} = record}) do
-    Logger.info("# UPDATE RECORD #")
+  def replicate(%UpdatedRecord{
+        table: table,
+        old_record: _old_record,
+        record: record
+      }) do
+    update_data(table, record)
+    Logger.info("Data #{table} updated")
 
-    case Repo.get(Todo, id) do
-      nil ->
-        Repo.insert(Todo.changeset(%Todo{}, record))
-      todo ->
-        Repo.update(Todo.changeset(todo, record))
-    end
-  end
-
-  def replicate(%DeletedRecord{old_record: %{"id" => id}} = record) do
-    Logger.info("# DELETE RECORD #")
-
-    case Repo.get(Todo, id) do
-      nil -> {:ok, nil}
-      todo -> Repo.delete(todo)
-    end
+    :ok
   end
 
   def replicate(_record) do
     Logger.info("Action ignored")
   end
-end
+
+  defp insert_data(table, record) do
+    # TODO: on_conflict -> need to update the data?
+    Repo.insert_all(table, [Map.to_list(record)], returning: [:id], on_conflict: :nothing)
+  end
+
+  defp update_data(table, %{id: id} = record) do
+    # TODO: need to check existing data? or use upsert?
+
+    table
+    |> where(id: ^id)
+    |> update(set: ^Map.to_list(record))
+    |> Repo.update_all([])
+  end
+end 
